@@ -13,6 +13,7 @@ from django.contrib.auth.views import (
 )
 
 import django
+
 if django.VERSION >= (1, 11):
     from django.urls import reverse
 else:
@@ -84,7 +85,8 @@ class AuthorizeView(View):
                 if 'select_account' in authorize.params['prompt']:
                     # TODO: see how we can support multiple accounts for the end-user.
                     if 'none' in authorize.params['prompt']:
-                        raise AuthorizeError(authorize.params['redirect_uri'], 'account_selection_required', authorize.grant_type)
+                        raise AuthorizeError(authorize.params['redirect_uri'], 'account_selection_required',
+                                             authorize.grant_type)
                     else:
                         django_user_logout(request)
                         return redirect_to_login(request.get_full_path(), settings.get('OIDC_LOGIN_URL'))
@@ -92,21 +94,17 @@ class AuthorizeView(View):
                 if {'none', 'consent'}.issubset(authorize.params['prompt']):
                     raise AuthorizeError(authorize.params['redirect_uri'], 'consent_required', authorize.grant_type)
 
-                implicit_flow_resp_types = set(['id_token', 'id_token token'])
-                allow_skipping_consent = (
-                    authorize.client.client_type != 'public' or
-                    authorize.client.response_type in implicit_flow_resp_types)
+                # implicit_flow_resp_types = set(['id_token', 'id_token token'])
+                # allow_skipping_consent = (
+                #     authorize.client.client_type != 'public' or
+                #     authorize.client.response_type in implicit_flow_resp_types)
 
-                if not authorize.client.require_consent and (
-                        allow_skipping_consent and
-                        'consent' not in authorize.params['prompt']):
+                if not authorize.client.require_consent and ('consent' not in authorize.params['prompt']):
                     return redirect(authorize.create_response_uri())
 
                 if authorize.client.reuse_consent:
                     # Check if user previously give consent.
-                    if authorize.client_has_user_consent() and (
-                            allow_skipping_consent and
-                            'consent' not in authorize.params['prompt']):
+                    if authorize.client_has_user_consent() and ('consent' not in authorize.params['prompt']):
                         return redirect(authorize.create_response_uri())
 
                 if 'none' in authorize.params['prompt']:
@@ -127,7 +125,7 @@ class AuthorizeView(View):
                     'client': authorize.client,
                     'hidden_inputs': hidden_inputs,
                     'params': authorize.params,
-                    'scopes': authorize.get_scopes_information(),
+                    'scopes': authorize.get_scopes_information()
                 }
 
                 return render(request, OIDC_TEMPLATES['authorize'], context)
@@ -162,13 +160,17 @@ class AuthorizeView(View):
             authorize.validate_params()
 
             if not request.POST.get('allow'):
-                signals.user_decline_consent.send(self.__class__, user=request.user, client=authorize.client, scope=authorize.params['scope'])
+                signals.user_decline_consent.send(self.__class__, user=request.user, client=authorize.client,
+                                                  scope=authorize.params['scope'])
 
+                # give user a change to logout
+                django_user_logout(request)
                 raise AuthorizeError(authorize.params['redirect_uri'],
                                      'access_denied',
                                      authorize.grant_type)
 
-            signals.user_accept_consent.send(self.__class__, user=request.user, client=authorize.client, scope=authorize.params['scope'])
+            signals.user_accept_consent.send(self.__class__, user=request.user, client=authorize.client,
+                                             scope=authorize.params['scope'])
 
             # Save the user consent given to the client.
             authorize.set_client_user_consent()
