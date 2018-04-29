@@ -2,8 +2,8 @@
 
 [![Python Versions](https://img.shields.io/pypi/pyversions/django-oidc-provider.svg)](https://pypi.python.org/pypi/django-oidc-provider)
 [![PyPI Versions](https://img.shields.io/pypi/v/django-oidc-provider.svg)](https://pypi.python.org/pypi/django-oidc-provider)
-[![Documentation Status](https://readthedocs.org/projects/django-oidc-provider/badge/?version=v0.4.x)](http://django-oidc-provider.readthedocs.io/en/v0.4.x/?badge=v0.4.x)
-[![Travis](https://travis-ci.org/juanifioren/django-oidc-provider.svg?branch=v0.4.x)](https://travis-ci.org/juanifioren/django-oidc-provider)
+[![Documentation Status](https://readthedocs.org/projects/django-oidc-provider/badge/?version=master)](http://django-oidc-provider.readthedocs.io/)
+[![Travis](https://travis-ci.org/juanifioren/django-oidc-provider.svg?branch=master)](https://travis-ci.org/juanifioren/django-oidc-provider)
 
 ## About OpenID
 
@@ -15,13 +15,6 @@ OpenID Connect is a simple identity layer on top of the OAuth 2.0 protocol, whic
 
 Support for Python 3 and 2. Also latest versions of django.
 
-[Read docs for more info](http://django-oidc-provider.readthedocs.org/).
+[Read documentation for more info.](http://django-oidc-provider.readthedocs.org/)
 
-## Contributing
-
-[Join us!](https://github.com/juanifioren/django-oidc-provider/graphs/contributors) we love contributions, so please feel free to fix bugs, improve things, provide documentation. You SHOULD follow this steps:
-
-* Fork the project.
-* Make your feature addition or bug fix.
-* Add tests for it inside `oidc_provider/tests`. Then run all and ensure everything is OK (read docs for how to test in all envs).
-* Send pull request to the `develop` branch.
+[Do you want to contribute? Please read this.](http://django-oidc-provider.readthedocs.io/en/latest/sections/contribute.html)

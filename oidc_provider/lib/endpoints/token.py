@@ -4,11 +4,6 @@ import logging
 import re
 from django.contrib.auth import authenticate
 
-try:
-    from urllib.parse import unquote
-except ImportError:
-    from urllib import unquote
-
 from django.http import JsonResponse
 
 from oidc_provider.lib.errors import (
@@ -69,7 +64,7 @@ class TokenEndpoint(object):
             try:
                 user_pass = b64decode(b64_user_pass).decode('utf-8').split(':')
                 client_id, client_secret = tuple(user_pass)
-            except:
+            except Exception:
                 client_id = client_secret = ''
         else:
             client_id = self.request.POST.get('client_id', '')
@@ -143,9 +138,13 @@ class TokenEndpoint(object):
                                                client=self.client)
 
             except Token.DoesNotExist:
-                logger.debug('[Token] Refresh token does not exist: %s', self.params['refresh_token'])
+                logger.debug(
+                    '[Token] Refresh token does not exist: %s', self.params['refresh_token'])
                 raise TokenError('invalid_grant')
-
+        elif self.params['grant_type'] == 'client_credentials':
+            if not self.client._scope:
+                logger.debug('[Token] Client using client credentials with empty scope')
+                raise TokenError('invalid_scope')
         else:
             logger.debug('[Token] Invalid grant type: %s', self.params['grant_type'])
             raise TokenError('unsupported_grant_type')
@@ -157,34 +156,8 @@ class TokenEndpoint(object):
             return self.create_refresh_response_dic()
         elif self.params['grant_type'] == 'password':
             return self.create_access_token_response_dic()
-
-    def create_access_token_response_dic(self):
-        # See https://tools.ietf.org/html/rfc6749#section-4.3
-
-        token = create_token(
-            self.user,
-            self.client,
-            self.params['scope'].split(' '))
-
-        id_token_dic = create_id_token(
-            user=self.user,
-            aud=self.client.client_id,
-            nonce='self.code.nonce',
-            at_hash=token.at_hash,
-            request=self.request,
-            scope=token.scope,
-        )
-
-        token.id_token = id_token_dic
-        token.save()
-
-        return {
-            'access_token': token.access_token,
-            'refresh_token': token.refresh_token,
-            'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
-            'token_type': 'bearer',
-            'id_token': encode_id_token(id_token_dic, token.client),
-        }
+        elif self.params['grant_type'] == 'client_credentials':
+            return self.create_client_credentials_response_dic()
 
     def create_code_response_dic(self):
         # See https://tools.ietf.org/html/rfc6749#section-4.1
@@ -198,6 +171,7 @@ class TokenEndpoint(object):
             id_token_dic = create_id_token(
                 user=self.code.user,
                 aud=self.client.client_id,
+                token=token,
                 nonce=self.code.nonce,
                 at_hash=token.at_hash,
                 request=self.request,
@@ -242,6 +216,7 @@ class TokenEndpoint(object):
             id_token_dic = create_id_token(
                 user=self.token.user,
                 aud=self.client.client_id,
+                token=token,
                 nonce=None,
                 at_hash=token.at_hash,
                 request=self.request,
@@ -266,6 +241,52 @@ class TokenEndpoint(object):
         }
 
         return dic
+
+    def create_access_token_response_dic(self):
+        # See https://tools.ietf.org/html/rfc6749#section-4.3
+
+        token = create_token(
+            self.user,
+            self.client,
+            self.params['scope'].split(' '))
+
+        id_token_dic = create_id_token(
+            token=token,
+            user=self.user,
+            aud=self.client.client_id,
+            nonce='self.code.nonce',
+            at_hash=token.at_hash,
+            request=self.request,
+            scope=token.scope,
+        )
+
+        token.id_token = id_token_dic
+        token.save()
+
+        return {
+            'access_token': token.access_token,
+            'refresh_token': token.refresh_token,
+            'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
+            'token_type': 'bearer',
+            'id_token': encode_id_token(id_token_dic, token.client),
+        }
+
+    def create_client_credentials_response_dic(self):
+        # See https://tools.ietf.org/html/rfc6749#section-4.4.3
+
+        token = create_token(
+            user=None,
+            client=self.client,
+            scope=self.client.scope)
+
+        token.save()
+
+        return {
+            'access_token': token.access_token,
+            'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
+            'token_type': 'bearer',
+            'scope': self.client._scope,
+        }
 
     @classmethod
     def response(cls, dic, status=200):
